@@ -84,7 +84,7 @@ def train(model, tokenizer, opt):
         project='translator',
         )
     wandb.config.update(opt)
-    
+
     # train loop 
     for epoch in range(opt.epochs):
         
@@ -121,7 +121,7 @@ def train(model, tokenizer, opt):
             )
             print(f'Epoch {epoch}  loss{loss}')
         
-        torch.save(model.state_dict(), f'wandb/run-20220419_123355-272nd6xp/files/Helsinki_cp_(1){epoch}.pth')
+        torch.save(model.state_dict(), os.path.join(wandb.run.dir, 'files/Helsinki_cp_(1){epoch}.pth'))
 
     if opt.noval:
         bleu = evaluate(model, accelerator, test_loader, metric, tokenizer)
