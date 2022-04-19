@@ -26,8 +26,7 @@ def get_train_opt():
     parser.add_argument('--device', type=str, default='cuda:0', choices=['cuda:0', 'cpu'], help='device for training')
 
     parser.add_argument('--opt', type=str, default='AdamW', choices=['AdamW', 'SGD', 'Adam'], help='optimizer')
-    parser.add_argument('--lr', type=float, default='2e-5', help='leraning rate')
-    parser.add_argument('--sheduler', type=bool, default=False, help='use linear lr sheduler')    
+    parser.add_argument('--lr', type=float, default='2e-5', help='leraning rate') 
     parser.add_argument('--bs', type=int, default=4, help='batch size')
     parser.add_argument('--epochs', type=int, default=10, help='number of train epochs')
 
@@ -39,7 +38,6 @@ def get_train_opt():
 def train(model, tokenizer, opt):
     
     #define device
-    device = torch.device(opt.device)
     if opt.device == 'cpu':
         print('Using cpu for training, are you sure?')
 
@@ -69,10 +67,6 @@ def train(model, tokenizer, opt):
     elif opt.opt == 'SGD':
         optimizer = SGD(model.parameters(), opt.lr) # add other params
 
-    # define lr sheduler 
-    if opt.sheduler:
-        pass # add sheduler
-
     # define accelrator
     accelerator = Accelerator()
     model, optimizer, train_loader, eval_loader = accelerator.prepare(
@@ -90,7 +84,7 @@ def train(model, tokenizer, opt):
         project='translator',
         )
     wandb.config.update(opt)
-
+    
     # train loop 
     for epoch in range(opt.epochs):
         
@@ -126,6 +120,8 @@ def train(model, tokenizer, opt):
                 }
             )
             print(f'Epoch {epoch}  loss{loss}')
+        
+        torch.save(model.state_dict(), f'wandb/run-20220419_123355-272nd6xp/files/Helsinki_cp_(1){epoch}.pth')
 
     if opt.noval:
         bleu = evaluate(model, accelerator, test_loader, metric, tokenizer)
