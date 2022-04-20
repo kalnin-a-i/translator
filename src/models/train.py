@@ -69,7 +69,7 @@ def train(model, tokenizer, opt):
 
     # define accelrator
     accelerator = Accelerator()
-    model, optimizer, train_loader, eval_loader = accelerator.prepare(
+    model, optimizer, train_loader, test_loader = accelerator.prepare(
         model, optimizer, train_loader, test_loader
     )
     # define metric
