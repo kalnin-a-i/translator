@@ -42,8 +42,8 @@ def train(model, tokenizer, opt):
         print('Using cpu for training, are you sure?')
 
     # preprocess data
-    train_dataset = TranslationDataset(os.path.join(opt.data_path, 'train.csv'))
-    val_dataset = TranslationDataset(os.path.join(opt.data_path, 'test.csv'))
+    train_dataset = TranslationDataset(os.path.join(opt.data_path, 'train.csv'), tokenizer)
+    val_dataset = TranslationDataset(os.path.join(opt.data_path, 'test.csv'), tokenizer)
 
     # define dataloaders
     data_collator = DataCollatorForSeq2Seq(tokenizer, model=model)

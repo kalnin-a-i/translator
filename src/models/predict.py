@@ -1,5 +1,4 @@
 from transformers import pipeline 
-import torch
 
 class Translator():
     def __init__(self, model, tokenizer):

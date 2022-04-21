@@ -3,9 +3,8 @@ from pathlib import Path
 from torch.utils.data import Dataset
 import pandas as pd
 import torch
-from ..models.model import tokenizer
 
-def preprocess_func(example, max_input_length, max_target_length):
+def preprocess_func(example, tokenizer, max_input_length, max_target_length):
     inputs = example['Eng']
     targets = example['Rus']
     model_inputs = tokenizer(inputs, max_length=max_input_length, truncation=True, padding=True)
@@ -23,13 +22,14 @@ def preprocess_func(example, max_input_length, max_target_length):
 
 class TranslationDataset(Dataset):
     '''Dataset class for translation'''
-    def __init__(self, csv_file : str, 
+    def __init__(self, csv_file : str,
+                 tokenizer, 
                  max_input_length=128, 
                  max_target_length=512):
 
         self.csv_file = csv_file
         self.df = pd.read_csv(csv_file)
-        self.tokenized = self.df.apply(preprocess_func, axis=1, args=(max_input_length, max_target_length))
+        self.tokenized = self.df.apply(preprocess_func, axis=1, args=(tokenizer, max_input_length, max_target_length))
 
     def __len__(self):
         return len(self.df)
