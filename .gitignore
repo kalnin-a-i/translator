@@ -1,3 +1,7 @@
 *__pycache__
 /wandb
 /env
+output.html
+src/data/matlab/test_small.csv
+src/data/matlab/train_small.csv
+src/fresh_model.pth
