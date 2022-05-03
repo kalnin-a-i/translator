@@ -1,12 +1,14 @@
 import bs4
 from urllib.request import urlopen
 from transformers import pipeline
+import re
 
 class HtmlTranslator():
     def __init__(self, model, tokenizer):
-        self.model = model
+        # self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        self.model = model#.to(self.device)
         self.tokenizer = tokenizer
-        self.generator = pipeline(task='translation', model=model, tokenizer=tokenizer)
+        self.generator = pipeline(task='translation', model=model, tokenizer=tokenizer, device=0)
     
     def translate_sentence(self, sentences):
         translated = self.generator(sentences)
@@ -20,14 +22,24 @@ class HtmlTranslator():
     def translate_html(self, html):
         soup = bs4.BeautifulSoup(html, 'html.parser')
         main = self.get_main(soup)
-        print(main)
-        print(main.find_all('h'))
 
+        #translate paragraphs
         for elem in main.find_all('p'):
             new_elem = soup.new_tag('p')
+            if elem.find_parent('div', class_='bibliomixed') or elem.find_previous_sibling('h2', text='See Also'):
+                continue
             translated_text = self.translate_sentence(elem.get_text())
             new_elem.string = translated_text
             elem.replace_with(new_elem) 
+
+        #translate headers
+        for a in ['h1','h2', 'h3']:
+            for elem in main.find_all(a):
+                new_elem = soup.new_tag(a)
+                translated_text = self.translate_sentence(elem.get_text())
+                new_elem.string = translated_text
+                elem.replace_with(new_elem)
+
         
         return soup
 
@@ -38,7 +50,8 @@ def dump_to_file(soup):
 
 if __name__ == '__main__':
     from ..models.model import get_model
-    model, tokenizer = get_model('src\Helsinki_cp_(1)14.pth')
+    import torch
+    model, tokenizer = get_model('src/fresh_model.pth')
     translator = HtmlTranslator(model, tokenizer)
     url = 'https://www.mathworks.com/help/deeplearning/ug/train-deep-learning-network-to-classify-new-images.html'
     translated = translator.translate_html(html = urlopen(url))
