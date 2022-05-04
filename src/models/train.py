@@ -117,7 +117,6 @@ def train(model, tokenizer, opt):
             accelerator.backward(loss)
 
             optimizer.step()
-            # lr_scheduler.step()
             optimizer.zero_grad()
         
         #eval step if need
@@ -127,7 +126,7 @@ def train(model, tokenizer, opt):
                 {
                     'loss' : loss,
                     'bleu' : bleu,
-                    'lr' : sheduler.get_last_lr()[0]
+                    'lr' : float(sheduler.get_last_lr()[0])
                 }
             )
             print(f'Epoch {epoch} finished bleu:{bleu}, loss{loss}')

@@ -1,7 +1,6 @@
 import bs4
 from urllib.request import urlopen
 from transformers import pipeline
-import re
 
 class HtmlTranslator():
     def __init__(self, model, tokenizer):
@@ -18,6 +17,13 @@ class HtmlTranslator():
         #find main section of docs
         main = soup.find('section', id='doc_center_content')
         return main
+        
+    def replace_nbsp(srelf, soup):
+        texts = soup.find_all(text=True)
+        for t in texts:
+            newtext = t.replace("&nbsp;", "")
+            t.replace_with(newtext)
+        return soup
 
     def translate_html(self, html):
         soup = bs4.BeautifulSoup(html, 'html.parser')
@@ -26,21 +32,23 @@ class HtmlTranslator():
         #translate paragraphs
         for elem in main.find_all('p'):
             new_elem = soup.new_tag('p')
-            if elem.find_parent('div', class_='bibliomixed') or elem.find_previous_sibling('h2', text='See Also'):
+            if (elem.find_parent('div', class_='bibliomixed') or 
+                elem.find_previous_sibling('h2', text='See Also') or 
+                elem.find_previous_sibling('h3', text='References')):
                 continue
             translated_text = self.translate_sentence(elem.get_text())
             new_elem.string = translated_text
             elem.replace_with(new_elem) 
 
         #translate headers
-        for a in ['h1','h2', 'h3']:
-            for elem in main.find_all(a):
-                new_elem = soup.new_tag(a)
+        for header in ['h1','h2', 'h3']:
+            for elem in main.find_all(header):
+                new_elem = soup.new_tag(header)
                 translated_text = self.translate_sentence(elem.get_text())
                 new_elem.string = translated_text
                 elem.replace_with(new_elem)
 
-        
+        soup = self.replace_nbsp(soup)
         return soup
 
 def dump_to_file(soup):
@@ -53,7 +61,7 @@ if __name__ == '__main__':
     import torch
     model, tokenizer = get_model('src/fresh_model.pth')
     translator = HtmlTranslator(model, tokenizer)
-    url = 'https://www.mathworks.com/help/deeplearning/ug/train-deep-learning-network-to-classify-new-images.html'
+    url = 'https://www.mathworks.com/help/deeplearning/gs/create-simple-sequence-classification-network.html'
     translated = translator.translate_html(html = urlopen(url))
     dump_to_file(translated)
 
