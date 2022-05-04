@@ -10,7 +10,7 @@ class Translator():
         return result
 
 if __name__ == '__main__':
-    from model import get_model
+    from ..models.model import get_model
     model, tokenizer = get_model()
     translator  = Translator(model, tokenizer)
     print(translator.translate('How are you?'))

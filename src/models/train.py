@@ -1,6 +1,7 @@
 import torch
 import os
 from torch.optim import AdamW, SGD, Adam
+from torch.optim.lr_scheduler import LinearLR, ConstantLR, ExponentialLR
 from torch.utils.data import DataLoader
 from transformers import DataCollatorForSeq2Seq
 from tqdm import tqdm
@@ -23,27 +24,32 @@ def get_train_opt():
     parser.add_argument('--weights', type=str, help='initial weigths')
     parser.add_argument('--noval', type=bool, default=False, help='validation only after last epoch')
     parser.add_argument('--save_path', type=str, default='models/models/', help='path there to save tuned model')
-    parser.add_argument('--device', type=str, default='cuda:0', choices=['cuda:0', 'cpu'], help='device for training')
+    parser.add_argument('--device', type=str, default='gpu', choices=['gpu', 'cpu'], help='device for training')
 
     parser.add_argument('--opt', type=str, default='AdamW', choices=['AdamW', 'SGD', 'Adam'], help='optimizer')
     parser.add_argument('--lr', type=float, default='2e-5', help='leraning rate') 
     parser.add_argument('--bs', type=int, default=4, help='batch size')
     parser.add_argument('--epochs', type=int, default=10, help='number of train epochs')
+    parser.add_argument('--sheduler', type=str, default='linear', choices=['linear', 'constant', 'exponential'])
+    # for linear lr
+    parser.add_argument('--start_factor', type=float, default=0.33, required='--sheduler' == 'linear', help='start factor for linear lr')
+    parser.add_argument('--end_factor', type=float, default=1, required='--sheduler' == 'linear', help='end factor for linear lr')
+    parser.add_argument('--total_iters', type=int, default=10, required='--sheduler' == 'linear' or '--sheduler' == 'constant', help='The number of iterations that multiplicative factor reaches to end factor')
+    #for exponential lr
+    parser.add_argument('--gamma', type=float,  default=0.9, required='--sheduler' == 'exponential', help='gamma for exp lr')
+    # for const lr
+    parser.add_argument('--factor', type=float, default=0.333, required='--sheduler' == 'constant', help='factor for constant lr')
 
+    parser.add_argument('--wandb_key', type=str, default='f9a8d11e45667377c03389e476e8cf67740cee7f')
     parser.add_argument('--data_path', type=str, default='src/data/matlab/', help='path to train data file')
     opt = parser.parse_args()
     return opt
 
 
 def train(model, tokenizer, opt):
-    
-    #define device
-    if opt.device == 'cpu':
-        print('Using cpu for training, are you sure?')
-
     # preprocess data
-    train_dataset = TranslationDataset(os.path.join(opt.data_path, 'train.csv'), tokenizer)
-    val_dataset = TranslationDataset(os.path.join(opt.data_path, 'test.csv'), tokenizer)
+    train_dataset = TranslationDataset(os.path.join(opt.data_path, 'train_small.csv'), tokenizer)
+    val_dataset = TranslationDataset(os.path.join(opt.data_path, 'test_small.csv'), tokenizer)
 
     # define dataloaders
     data_collator = DataCollatorForSeq2Seq(tokenizer, model=model)
@@ -67,18 +73,33 @@ def train(model, tokenizer, opt):
     elif opt.opt == 'SGD':
         optimizer = SGD(model.parameters(), opt.lr) # add other params
 
+    # define lr sheduler
+    if opt.sheduler == 'linear':
+        sheduler = LinearLR(optimizer, start_factor = opt.start_factor, end_factor = opt.end_factor, total_iters=opt.total_iters)
+    elif opt.sheduler == 'exponenntial':
+        sheduler = ExponentialLR(optimizer, gamma = opt.gamma)
+    elif opt.sheduler == 'constant':
+        sheduler == ConstantLR(optimizer, factor = opt.factor, total_iters = opt.total_iters)
+
+
     # define accelrator
-    accelerator = Accelerator()
-    model, optimizer, train_loader, test_loader = accelerator.prepare(
-        model, optimizer, train_loader, test_loader
+    #define device
+    if opt.device == 'cpu':
+        print('Using cpu for training, are you sure?')
+        accelerator = Accelerator(cpu=True)
+    else:
+        accelerator = Accelerator()
+    
+    #prepare accelerator
+    model, optimizer, train_loader, test_loader, sheduler = accelerator.prepare(
+        model, optimizer, train_loader, test_loader, sheduler
     )
     # define metric
     metric = load_metric('sacrebleu')
-    print(val_dataset)
 
     #wandb 
     #login and init
-    wandb.login()
+    wandb.login(key=opt.wandb_key)
     
     wandb.init(
         project='translator',
@@ -96,7 +117,6 @@ def train(model, tokenizer, opt):
             accelerator.backward(loss)
 
             optimizer.step()
-            # lr_scheduler.step()
             optimizer.zero_grad()
         
         #eval step if need
@@ -105,23 +125,22 @@ def train(model, tokenizer, opt):
             wandb.log(
                 {
                     'loss' : loss,
-                    'bleu' : bleu, 
-                    'epoch' : epoch, 
-
+                    'bleu' : bleu,
+                    'lr' : float(sheduler.get_last_lr()[0])
                 }
             )
             print(f'Epoch {epoch} finished bleu:{bleu}, loss{loss}')
         else:
             wandb.log(
                 {
-                    'loss' : loss, 
-                    'epoch' : epoch, 
-
+                    'loss' : loss,  
                 }
             )
             print(f'Epoch {epoch}  loss{loss}')
         
-        torch.save(model.state_dict(), os.path.join(wandb.run.dir, 'files/Helsinki_cp_(1){epoch}.pth'))
+        sheduler.step()
+        if epoch % 10 == 0:
+            torch.save(model.state_dict(), os.path.join(wandb.run.dir, f'Helsinki_cp_(1){epoch}.pth'))
 
     if opt.noval:
         bleu = evaluate(model, accelerator, test_loader, metric, tokenizer)

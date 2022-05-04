@@ -1,4 +1,6 @@
-FROM python:3
+FROM nvidia/cuda:11.2.0-cudnn8-runtime-ubuntu16.04
+
+RUN apt-get update && apt-get install -y python3 python3-pip sudo
 
 WORKDIR C:\Users\User\Desktop\docs_translate
 
