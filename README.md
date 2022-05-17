@@ -19,5 +19,7 @@ python3 train_script.py --help
 docker build -t translator:latest .
 ```
 ```
-docker run translator:latest <command>
+docker run translator:latest pyhton3 train_script.py
 ```
+### HTML translation
+To translate html file your need to call translate_html method of class HtmlTranslator located at src/translate/html_translator
