@@ -29,7 +29,7 @@ def get_train_opt():
     parser.add_argument('--opt', type=str, default='AdamW', choices=['AdamW', 'SGD', 'Adam'], help='optimizer')
     parser.add_argument('--lr', type=float, default='2e-5', help='leraning rate') 
     parser.add_argument('--bs', type=int, default=16, help='batch size')
-    parser.add_argument('--epochs', type=int, default=10, help='number of train epochs')
+    parser.add_argument('--epochs', type=int, default=20, help='number of train epochs')
     parser.add_argument('--sheduler', type=str, default='linear', choices=['linear', 'constant', 'exponential'])
 
     parser.add_argument('--wandb_key', type=str, default='f9a8d11e45667377c03389e476e8cf67740cee7f')

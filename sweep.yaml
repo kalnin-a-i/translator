@@ -1,0 +1,24 @@
+method: bayes
+metric:
+  goal: maximize
+  name: bleu
+parameters:
+  bs:
+    distribution: int_uniform
+    max: 24
+    min: 4
+  lr:
+    distribution: uniform
+    max: 4e-05
+    min: 5e-06
+  opt:
+    distribution: categorical
+    values:
+      - AdamW
+      - Adam
+  sheduler:
+    distribution: categorical
+    values:
+      - linear
+      - constant
+program: train_script.py
