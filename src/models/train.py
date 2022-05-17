@@ -28,17 +28,9 @@ def get_train_opt():
 
     parser.add_argument('--opt', type=str, default='AdamW', choices=['AdamW', 'SGD', 'Adam'], help='optimizer')
     parser.add_argument('--lr', type=float, default='2e-5', help='leraning rate') 
-    parser.add_argument('--bs', type=int, default=4, help='batch size')
+    parser.add_argument('--bs', type=int, default=16, help='batch size')
     parser.add_argument('--epochs', type=int, default=10, help='number of train epochs')
     parser.add_argument('--sheduler', type=str, default='linear', choices=['linear', 'constant', 'exponential'])
-    # for linear lr
-    parser.add_argument('--start_factor', type=float, default=0.33, required='--sheduler' == 'linear', help='start factor for linear lr')
-    parser.add_argument('--end_factor', type=float, default=1, required='--sheduler' == 'linear', help='end factor for linear lr')
-    parser.add_argument('--total_iters', type=int, default=10, required='--sheduler' == 'linear' or '--sheduler' == 'constant', help='The number of iterations that multiplicative factor reaches to end factor')
-    #for exponential lr
-    parser.add_argument('--gamma', type=float,  default=0.9, required='--sheduler' == 'exponential', help='gamma for exp lr')
-    # for const lr
-    parser.add_argument('--factor', type=float, default=0.333, required='--sheduler' == 'constant', help='factor for constant lr')
 
     parser.add_argument('--wandb_key', type=str, default='f9a8d11e45667377c03389e476e8cf67740cee7f')
     parser.add_argument('--data_path', type=str, default='src/data/matlab/', help='path to train data file')
@@ -48,8 +40,8 @@ def get_train_opt():
 
 def train(model, tokenizer, opt):
     # preprocess data
-    train_dataset = TranslationDataset(os.path.join(opt.data_path, 'train_small.csv'), tokenizer)
-    val_dataset = TranslationDataset(os.path.join(opt.data_path, 'test_small.csv'), tokenizer)
+    train_dataset = TranslationDataset(os.path.join(opt.data_path, 'train.csv'), tokenizer)
+    val_dataset = TranslationDataset(os.path.join(opt.data_path, 'test.csv'), tokenizer)
 
     # define dataloaders
     data_collator = DataCollatorForSeq2Seq(tokenizer, model=model)
@@ -75,11 +67,11 @@ def train(model, tokenizer, opt):
 
     # define lr sheduler
     if opt.sheduler == 'linear':
-        sheduler = LinearLR(optimizer, start_factor = opt.start_factor, end_factor = opt.end_factor, total_iters=opt.total_iters)
+        sheduler = LinearLR(optimizer)
     elif opt.sheduler == 'exponenntial':
-        sheduler = ExponentialLR(optimizer, gamma = opt.gamma)
+        sheduler = ExponentialLR(optimizer)
     elif opt.sheduler == 'constant':
-        sheduler == ConstantLR(optimizer, factor = opt.factor, total_iters = opt.total_iters)
+        sheduler == ConstantLR(optimizer)
 
 
     # define accelrator
@@ -126,10 +118,9 @@ def train(model, tokenizer, opt):
                 {
                     'loss' : loss,
                     'bleu' : bleu,
-                    'lr' : float(sheduler.get_last_lr()[0])
                 }
             )
-            print(f'Epoch {epoch} finished bleu:{bleu}, loss{loss}')
+            print(f'Epoch {epoch} finished bleu : {bleu}, loss : {loss}')
         else:
             wandb.log(
                 {
@@ -140,7 +131,7 @@ def train(model, tokenizer, opt):
         
         sheduler.step()
         if epoch % 10 == 0:
-            torch.save(model.state_dict(), os.path.join(wandb.run.dir, f'Helsinki_cp_(1){epoch}.pth'))
+            torch.save(model.state_dict(), os.path.join(wandb.run.dir, f'Helsinki_cp_{epoch}.pth'))
 
     if opt.noval:
         bleu = evaluate(model, accelerator, test_loader, metric, tokenizer)

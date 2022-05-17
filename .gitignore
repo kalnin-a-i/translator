@@ -1,6 +1,6 @@
 *__pycache__
 /wandb
-/env 
+/test
 output.html
 src/fresh_model.pth
 src/data/matlab
