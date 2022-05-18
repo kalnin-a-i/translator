@@ -5,7 +5,7 @@ metric:
 parameters:
   bs:
     distribution: int_uniform
-    max: 24
+    max: 20
     min: 4
   lr:
     distribution: uniform

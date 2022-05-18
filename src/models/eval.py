@@ -19,7 +19,7 @@ def postprocess(predictions, labels, tokenizer):
 
 def evaluate(model, accelerator, eval_dataloader, metric, tokenizer):
     model.eval()
-    for batch in tqdm(eval_dataloader):
+    for batch in eval_dataloader:
         with torch.no_grad():
             generated_tokens = accelerator.unwrap_model(model).generate(
                 batch["input_ids"],

@@ -71,7 +71,7 @@ def train(model, tokenizer, opt):
     elif opt.sheduler == 'exponenntial':
         sheduler = ExponentialLR(optimizer)
     elif opt.sheduler == 'constant':
-        sheduler == ConstantLR(optimizer)
+        sheduler = ConstantLR(optimizer)
 
 
     # define accelrator
@@ -81,6 +81,7 @@ def train(model, tokenizer, opt):
         accelerator = Accelerator(cpu=True)
     else:
         accelerator = Accelerator()
+        print(Accelerator.device)
     
     #prepare accelerator
     model, optimizer, train_loader, test_loader, sheduler = accelerator.prepare(
@@ -103,7 +104,7 @@ def train(model, tokenizer, opt):
         
         # Forward and  backward pass
         model.train()
-        for batch in tqdm(train_loader):
+        for batch in train_loader:
             outputs = model(**batch)
             loss = outputs.loss
             accelerator.backward(loss)
